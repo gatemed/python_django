@@ -1,0 +1,687 @@
+THE DJANGO BOOK SUMMARY
+
+
+MVT : Model data access contains everything about datas, template what to see (vue mvc), view like controleur (mvc) model to the right template.
+URLS AND VIEWS GENERAL
+Urlconf for this url call this view
+Url import include => for reference other urlconf file
+Include(admin.site.urls) in old versions
+url(r'^hello/$', hello)
+r => raw string, starting with and ending with, no / in the begin because Django delete first slash, if not slash in the end it try with slash because of the append_slash of the settings. Calling the hello function of the views.py
+url(r’^$’, home_page_view)
+
+url(r'^time/plus/(\d{1,2})/$', hours_ahead) => in the view we put 
+
+def hours_ahead(request, offset):
+    try:
+        offset = int(offset)   => in this exemple only num allowed, even if it is the case in the urls (\d) but can be called in another way
+    except ValueError:
+        raise Http404()
+
+TEMPLATES & CONTEXT GENERAL
+
+{{ var_name}} to print a var
+{% if %}  for if else for …
+There is only filter for exemple for date filter {{ ship_date|date:"F j, Y" }}, ship_date var to date filter
+We set the values of the template with a context : exemple : 
+from django.template import Context, Template
+T = Template(‘my name is {{name}} and {{nom}}.’)
+C = Contect({‘name’:’mehdi’, ‘nom’:’kahouadji’})
+Print(t.render(c))
+
+We can data struct : 
+person = {'name': 'Sally', 'age': '43'}
+t = Template('{{ person.name }} is {{ person.age }} years old.')
+c = Context({'person': person})
+also objects their attributes and their methods (without ()) ex: str.upper,  
+list indice: items.2 => items is a list
+
+for annuler errors throw
+silent_variable_failure = True 
+
+To  not render function : 
+delete.alters_data = True
+
+So we can’t render function with params
+
+Taf if no parentheses even big :
+{% if athlete_list or coach_list or parent_list or teacher_list %}
+
+In foor loop there is special vars: 
+Forloop.counter : the counter of the loop
+Footloop.revcounter : remaining number items
+Forloop.first : if its first iteration
+	.last
+Forloop.parentloop.counter
+
+{#comment#}  one line comment
+{% comment %}
+Multi line
+Comment
+{% endcomment %}
+
+FILTERS:
+{{ name|lower }} => lower case
+{{ my_list|first|upper }}
+
+{{ bio|truncatewords:"30" }} => filter arugument double cote, 30 first words of bio var
+
+{{ value|addslashes }}
+{{ pub_date|date:"F j, Y" }}
+ 
+TEMPLATE IN VIEWS
+
+Settings template dir by default empty it looks in the project, or we specify elsewhere
+It loogs in the templates dir 
+from django.template.loader import get_template
+from django.http import HttpResponse
+import datetime
+
+def current_datetime(request):
+    now = datetime.datetime.now()
+    t = get_template('current_datetime.html')
+    html = t.render({'current_date': now})
+    return HttpResponse(html)
+
+better : 
+from django.shortcuts import render
+import datetime
+
+def current_datetime(request):
+    now = datetime.datetime.now()
+    return render(request, ‘truc/current_datetime.html', {'current_date': now})
+
+
+{% include '../nav_base.html' %} or “” or var
+
+
+Template inheritance
+We define the things that are different not same
+
+Exemple: 
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+<head>
+    <title>{% block title %}{% endblock %}</title>
+</head>
+<body>
+    <h1>My helpful timestamp site</h1>
+    {% block content %}{% endblock %}
+
+    {% block footer %}
+    <hr>
+    <p>Thanks for visiting my site.</p>
+    {% endblock %}
+</body>
+</html>
+
+Then we extends : 
+Page one:
+{% extends "base.html" %}
+{% block title %}The current time{% endblock %}
+{% block content %}
+    <p>It is now {{ current_date }}.</p>
+{% endblock %}
+
+Page 2:
+{% extends "base.html" %}
+{% block title %}Future time{% endblock %}
+{% block content %}
+<p>
+    In {{ hour_offset }} hour(s), it will be {{ next_time }}.
+</p>
+{% endblock %}
+
+We can extends vars, it use same get_template then DIRS settings, block.super to print parent rendered block
+
+
+MODELS
+Settings, database engine and name
+Models need an app
+We can database from models (migrations), and inverse
+from django.db import models
+
+class Publisher(models.Model):
+    name = models.CharField(max_length=30)
+    address = models.CharField(max_length=50)
+    city = models.CharField(max_length=60)
+    state_province = models.CharField(max_length=30)
+    country = models.CharField(max_length=50)
+    website = models.URLField()
+def __str__(self):
+        return self.name
+
+
+class Author(models.Model):
+    first_name = models.CharField(max_length=30)
+    last_name = models.CharField(max_length=40)
+    email = models.EmailField()
+def __str__(self):
+        return u'%s %s' % (self.first_name, self.last_name)
+
+
+class Book(models.Model):
+    title = models.CharField(max_length=100)
+    authors = models.ManyToManyField(Author)
+    publisher = models.ForeignKey(Publisher)
+    publication_date = models.DateField()
+def __str__(self):
+        return self.title
+Many to many authors to books
+In settings activate installed apps; apptest1
+To check the model, python manage.py check
+Python manage.py makemigrations app, puis migrate
+We can check / see what sql with sqlmigrate books 0001 
+Primary key, reference for foreign key
+We create objects 2 ways :
+Obj = Class()
+Obj.save()
+Or obj = Class.objects.create() (save directly)
+Access datas : 
+Publisher.objects.all()
+
+Explicit is better than implicit
+To use data we use managers, objects is a manager (see later), all method of the objects manager
+Method of objects manager,  filter(name=”fdsfds”), name__contains (double underscore just like python).  <= return list
+Startswith, endswith, range, icontains (case ins).    
+Objects.get() to return an object not a list ( catch apptest1.models.DoesNotExist & MultipleObjectsReturned)
+Order data
+objects.order_by(“name”) just like all  -name reverse
+
+
+we can add to the class def: 
+class Meta:
+        ordering = ['name']
+
+Filtering and ordering:
+
+filter(country="U.S.A.").order_by("-name")
+
+Slicing datas (no negative)
+Publisher.objects.order_by('name')[0:2]  => traduit par limit 
+				        or    [0] …
+Changing only a column (not all line):
+Publisher.objects.filter(id=1).update(name='Apress Publishing')
+Publisher.objects.all().update(country='USA')
+Delete obj: 
+Publisher.objects.filter(country='USA').delete()
+Publisher.objects.all().delete()
+
+ERROR: objects.delete() No objects func delete (manager)
+
+
+blank=True, or False, 
+null=true or false = if change we update the database
+verbose_name=‘e-mail’
+DJANGO ADMIN customize
+python manage.py createsuperuser
+
+We need to add explicitly the apps to Django admin with
+admin.site.register(Publisher)
+
+To customize things : to print many things : admin.py list_display
+from django.contrib import admin
+from .models import Publisher, Author, Book
+
+class AuthorAdmin(admin.ModelAdmin):
+    list_display = ('first_name', 'last_name', 'email')
+    search_fields = ('first_name', 'last_name')
+
+admin.site.register(Publisher)
+admin.site.register(Author, AuthorAdmin)
+admin.site.register(Book)
+
+adding filters   tuple () or elem
+class BookAdmin(admin.ModelAdmin):
+    list_display = ('title', 'publisher', 'publication_date')
+    list_filter = ('publication_date',)
+    date_hierarchy = 'publication_date'
+    ordering = ('-publication_date',)
+     fields = ('title', 'authors', 'publisher’)
+	filter_horizontal = ('authors',)
+	raw_id_fields = ('publisher',)
+
+raw_id_fields => for foreign key
+
+filter_horizontal => drag and drop from autors only manytomanyField
+fields => fields order, not edit leave out (publication date) in new add goes to null
+search => search field, 
+list_filter => add a menu filter
+Date hireachy => add a date per page: 2016 2017
+FORMS
+Request param in view : 
+Request.path : url path, request.get_host() : domain, get_full_path() : url with option,
+Is_secure() : https or not
+Request.META : python dictionary HTTP headers, ip address, name version browser, HTTP_REFERER, HTTP_USER_AGENT, REMOTE_ADDR   NOT TRUSTED BECAUSE CLIENT SIDE
+Request.GET and request.POST  dictionaries but with additional methods
+Same, get to get, post to edit send message …etc
+
+def search(request):
+    error = False
+    if 'q' in request.GET:
+        q = request.GET['q']
+        if not q:
+            error = True
+        else:
+            books = Book.objects.filter(title__icontains=q)
+            return render(request, 'books/search_results.html', {'books': books, 'query': q})
+    return render(request, 'books/search_form.html', {'error': error})
+
+<form action="" method="get">   => empty submit to the same page (search view)
+  
+{% if error %}
+        <p style="color: red;">Please submit a search term.</p>
+    {% endif %}
+    <form action="/search/" method="get">
+        <input type="text" name="q">
+        <input type="submit" value="Search">
+    </form>
+
+Search results:
+
+<p>You searched for: <strong>{{ query }}</strong></p>
+   
+        {% if books %}           
+            <p>Found {{ books|length }} book{{ books|pluralize }}.</p>
+            <ul>               
+                {% for book in books %}               
+                <li>{{ book.title }}</li>               
+                {% endfor %}           
+            </ul>       
+        {% else %}           
+            <p>No books matched your search criteria.</p>       
+        {% endif %}    
+
+Django form framework 
+Django philosophy 1 forms.py same dir then views
+1 form class for each html form
+We create the form:
+Widget and type function
+from django import forms
+class ContactForm(forms.Form):
+    subject = forms.CharField(max_length=100)
+    email = forms.EmailField(required=False, label='Your e-mail address')
+    message = forms.CharField(widget=forms.Textarea)
+f = ConcatForm …  f.is_valid()
+IntegerField, DateField, min_length
+# views.py for printing the form
+# mysite_project\mysite\mysite\views.py
+
+from django.http import Http404, HttpResponse, HttpResponseRedirect
+from django.shortcuts import render
+import datetime
+from mysite.forms import ContactForm    
+from django.core.mail import send_mail, get_connection
+
+def contact(request):
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            con = get_connection('django.core.mail.backends.console.EmailBackend')
+            send_mail(
+                cd['subject'],
+                cd['message'],
+                cd.get('email', 'noreply@example.com'),
+                ['siteowner@example.com'],
+                connection=con
+            )
+            return HttpResponseRedirect('/contact/thanks/')
+    else:
+        form = ContactForm(
+	initial={'subject': 'I love your site!'}
+	)
+
+return render(request, 'contact_form.html', {'form': form})
+
+form class auto the errors
+
+
+{% if form.errors %}
+        <p style="color: red;">
+            Please correct the error{{ form.errors|pluralize }} below.
+        </p>
+    {% endif %}
+
+    <form action="" method="post" novalidate>
+        <table>
+            {{ form.as_table }}
+        </table>
+        {% csrf_token %}
+        <input type="submit" value="Submit">
+    </form>
+
+{% csrf_token %} : cross site request forgeries
+
+Novalidate : validate with django not html5
+url(r'^contact/$', contact)
+
+
+
+Custom Validation Rules
+Adding to contactForm : in forms.py
+
+def clean_message(self):
+        message = self.cleaned_data['message']
+        num_words = len(message.split())
+        if num_words < 4:
+            raise forms.ValidationError("Not enough words!")
+        return message # if not clean message lost (None)
+
+Keywords : clean_+ message(name of the field)
+
+
+
+Custum fields rendering
+<form action="" method="post">
+        <div class="field">
+            {{ form.subject.errors }}
+            <label for="id_subject">Subject:</label>
+            {{ form.subject }}
+        </div>
+
+Multiple errors for same field:
+
+<div class="field{% if form.message.errors %} errors{% endif %}">
+    {% if form.message.errors %}
+        <ul>
+        {% for error in form.message.errors %}
+            <li><strong>{{ error }}</strong></li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+    <label for="id_message">Message:</label>
+    {{ form.message }} </div>
+Advanced VIEWS & URLS
+From . import views
+url(r’^hello/$’, views.hello)
+if settings.DEBUG:
+    urlpatterns += [url(r'^debuginfo/$', views.debug),]
+() to capture params url
+R raw string nothing to escape
+
+Named groups: maybe ugly and overbose
+(?P<year>[0-9]{4})/(?P<month>[0-9]{2}) pass (request, year='2003', month='03', day='03'). In place of (request, ‘2003’, ‘03’, ‘03’)
+Use named arguments, then non named ??
+Same function for same url function(even params)
+Captured arugements are always strings
+Default arguments view:
+def page(request, num="1"):
+function call, positional arguments before keyword arguments
+
+including urlconf :
+
+url(r'^contact/', include('django_website.contact.urls'))
+url(r'^(?P<username>\w+)/reviews/', include('foo.urls.reviews'))
+
+OR 
+extra_patterns = [
+    url(r'^reports/(?P<id>[0-9]+)/$', credit_views.report),
+    url(r'^charge/$', credit_views.charge),
+]
+
+urlpatterns = [
+    url(r'^$', main_views.homepage),
+    url(r'^help/', include('apps.help.urls')),
+    url(r'^credit/', include(extra_patterns)),
+]
+OR
+urlpatterns = [
+    url(r'^(?P<page_slug>\w+)-(?P<page_id>\w+)/', 
+        include([
+        url(r'^history/$', views.history),
+        url(r'^edit/$', views.edit),
+        url(r'^discuss/$', views.discuss),
+        url(r'^permissions/$', views.permissions),
+        ])),
+]
+
+
+Extra params to views
+url(r'^reviews/(?P<year>[0-9]{4})/$', views.year_archive, {'foo': 'bar'}),
+django will call views.year_archive(request, year='2005', foo='bar')
+same name dictionary first
+Extra options to include()
+  url(r'^reviews/', include('inner'), {'reviewid': 3}),
+	Equivaut à Inner.py just as include in all: 
+  url(r'^archive/$', views.archive, {'reviewid': 3}),
+     url(r'^about/$', views.about, {'reviewid': 3}),
+
+Reverse Resolution URLS
+url(r'^reviews/([0-9]{4})/$', views.year_archive, 
+        name='reviews-year-archive'),
+url template tag : {% url 'reviews-year-archive' 2012 %}
+
+django.core.urlresolvers.reverse('reviews-year-archive', args=(2012,))
+
+beware of naming url
+URLS NAMESPACE
+Always use best practice, reverse urls can multiple application or instances same urls
+Application namespace instances same app name, instance namespace can be the same as app name default.
+members:reviews:index
+author-reveiws is the app : so same link for multiple app (other then author-reviews)
+url(r'^reviews/', include('reviews.urls', namespace='author-reviews', app_name='reviews')),
+reviews_patterns = [
+    url(r'^$', views.IndexView.as_view(), name='index'),
+    url(r'^(?P<pk>\d+)/$', views.DetailView.as_view(), name='detail'), 
+]
+
+url(r'^reviews/', include((reviews_patterns, 'reviews', 'author-reviews')))
+
+url reviews:author-reviews or reverse(“reviews:author-reviews”)
+
+ADVANCED TEMPLATES
+requestContext proc remove redundancy, or using context_proc in the settings
+Cross Site Scripting : by default escape <>?”’& , or escape filter (do not double esc)
+{{ data|safe }} => no escape
+{% autoescape off %}
+{% endautoescape %}
+{{ data|default:"This is a string literal &lt; 2." }} => 
+
+Order of installed apps and context_proc is important, 
+App/Templates/app/template.html => get_template(app/template.html) :namespace
+Custom filters and tags
+Directory : templatetags same level as models.py, views…
+More details : Advanced custom 
+Advanced models
+We can run sql with Manager.raw()
+We can adds functions
+We can edit save and delete
+Author.objects.get(first_name=’adrian’)
+a.book_set.all()
+model manager perform queries, he return queryset
+we can add manager function : 
+class BookManager(models.Manager):
+    def title_count(self, keyword):
+        return self.filter(title__icontains=keyword).count()
+class Book(models.Model):
+objects = BookManager()
+
+We can add/edit return values of new managers:
+class DahlBookManager(models.Manager):
+    def get_queryset(self):
+        return super(DahlBookManager,self).get_queryset().filter(author='Roald Dahl')
+class Book(models.Model):	
+	objects = models.Manager()
+dahl_objects = DahlBookManager()
+	We add all our manager
+So => Book.dahl_objects.filter(title='Matilda')
+
+
+Generic view
+Big model: view generic ready, ListView, DetailView
+Using model argument to sepecifies the model the view use, or queryset argument to be more specefic
+#views
+from django.views.generic import ListView
+from books.models import Publisher
+
+class PublisherList(ListView):
+    model = Publisher
+    #context_object_name = 'my_favorite_publishers'
+# urls.py
+from django.conf.urls import url
+from books.views import PublisherList
+
+urlpatterns = [
+    url(r'^publishers/$', PublisherList.as_view()),
+]
+# template
+{% for publisher in publisher_list %}  object_list or publisher_list
+            <li>{{ publisher.name }}</li>
+        {% endfor %}
+
+Ex2: class  AcmeBookList(ListView)
+    context_object_name = 'book_list'
+    queryset = Book.objects.filter(publisher__name='Acme Publishing')
+    template_name = 'books/acme_list.html'
+
+
+Adding extra data: for exemple DetailView
+# books of all publisher key function get_context_data
+from django.views.generic import DetailView
+from books.models import Publisher, Book
+
+class PublisherDetail(DetailView):
+
+    model = Publisher
+
+    def get_context_data(self, **kwargs):
+        # Call the base implementation first to get a context
+        context = super(PublisherDetail, self).get_context_data(**kwargs)
+        # Add in a QuerySet of all the books
+        context['book_list'] = Book.objects.all()
+        return context 
+
+
+
+
+Dynamic filtering: key function get_queryset
+Avoid acmebooklist for exemple
+Using self elements
+# urls.py
+from django.conf.urls import url
+from books.views import PublisherBookList
+
+urlpatterns = [
+    url(r'^books/([\w-]+)/$', PublisherBookList.as_view()),
+]
+
+# views.py
+from django.shortcuts import get_object_or_404
+from django.views.generic import ListView
+from books.models import Book, Publisher
+
+class PublisherBookList(ListView):
+
+    template_name = 'books/books_by_publisher.html'
+
+    def get_queryset(self):
+        self.publisher = get_object_or_404(Publisher,  name=self.args[0])
+        return Book.objects.filter(publisher=self.publisher)
+
+
+# ... adding more infos with get_context_data: 
+
+def get_context_data(self, **kwargs):
+    # Call the base implementation first to get a context
+    context = super(PublisherBookList, self).get_context_data(**kwargs)
+
+    # Add in the publisher
+    context['publisher'] = self.publisher
+    return context ## Performing Extra Work
+
+
+Other example adding a last_accessed field: 
+
+class Author(models.Model):
+	class Author(models.Model):
+
+urlpatterns = [
+    #...
+    url(r'^authors/(?P<pk>[0-9]+)/$', AuthorDetailView.as_view(), name='author-detail\
+'),
+]
+class AuthorDetailView(DetailView):
+
+    queryset = Author.objects.all()
+
+    def get_object(self):
+        # Call the superclass
+        object = super(AuthorDetailView, self).get_object()
+
+        # Record the last accessed date
+        object.last_accessed = timezone.now()
+        object.save()
+        # Return the object
+        return object 
+USERS AND AUTH
+One user class, with attributes (superuser special attributes)
+python manage.py createsuperuser --username=joe --email=joe@example.com
+
+create_user(),  user.save(), manage changepassword, set_password(), has_add_permission(),change delete. 
+User.objects.get , Set_password, save().
+
+We can create permission programmatically.
+Permission caching : reget the object and check the perm, permission add do the save
+
+LOG IN: 
+from django.contrib.auth import authenticate, login
+
+def my_view(request):
+    username = request.POST['username']
+    password = request.POST['password']
+    user = authenticate(username=username, password=password)
+    if user is not None:
+        if user.is_active:
+            login(request, user)
+            # Redirect to a success page.
+        else:
+            # Return a 'disabled account' error message
+    else:
+        # Return an 'invalid login' error message.
+
+Logout(request)
+
+
+Limit Access:
+
+If not request.user.is_authenticated() do something
+	return redirect('/login/?next=%s' % request.path)
+or display login error
+we can use the @login_required decorator => by default redirect login_url+querystring (stored in next)
+we can edit it : @login_required(redirect_field_name=’my_redirect_field’)
+@login_required(login_url='/accounts/login/')
+
+EX DEFAILT:
+from django.contrib.auth import views as auth_views
+url(r'^accounts/login/$', auth_views.login),
+
+Login_required does NOT!!!!!!! Check user is_active flag
+Test exs : if not request.user.email.endswith(‘fdsfsd’)
+
+from django.contrib.auth.decorators import user_passes_test
+
+def email_check(user):
+    return user.email.endswith('@example.com')
+
+@user_passes_test(email_check, log_url=’/login/’)
+def my_view(request):
+…
+Login decorator, test decorater, and permission decorator
+@permission_required(‘reviews.ca_vote’, login_url=”fdfs”)
+Raise_exception params 403 permission denied
+The session logout if the password change, to change this use :
+form = PasswordChangeForm(user=request.user, data=request.POST)
+update_session_auth_hash(request, form.user) function from decorator
+
+builtin Views users exists
+urlpatterns = [url('^', include('django.contrib.auth.urls'))]
+a lot of views : 
+login, logout, password_change, password_change_done, password_reset, password_reset_done, password_rest_comfirm/complete, redirect_to_login function. Return TEmplateREsponse to custum the response, default url /name/
+built-in Foms and templates
+django.contrib.auth.forms : some : AdminPasswordChangeForm, AuthenticationForm…
+{{user.is_authenticated}}, user.username => only if RequestContext used
+{{perms}} perms.foo (foo app) ex: perms.foo.can_vote
+User django admin
+Perm to create user : add and edit, cause only add can add superusers
